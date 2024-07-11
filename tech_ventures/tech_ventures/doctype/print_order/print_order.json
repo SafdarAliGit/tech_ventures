@@ -1,0 +1,166 @@
+{
+ "actions": [],
+ "autoname": "EP-PO-.YY.-.####",
+ "creation": "2021-10-10 21:32:17.365603",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "customer",
+  "book_name",
+  "column_break_2",
+  "order_date",
+  "qty",
+  "print_order_items_section",
+  "items",
+  "total_qty_per_book",
+  "section_break_11",
+  "amended_from",
+  "status",
+  "files_section",
+  "file_name",
+  "file_name_2",
+  "file_name_3",
+  "file_name_4",
+  "file_name_5"
+ ],
+ "fields": [
+  {
+   "fieldname": "book_name",
+   "fieldtype": "Link",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Book Name",
+   "options": "Item",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "print_order_items_section",
+   "fieldtype": "Section Break",
+   "label": "Print Order Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Print Order Item"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Print Order",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "label": "Qty"
+  },
+  {
+   "default": "Prepared",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Prepared\nWorking\nCompleted\nPosted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_11",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "order_date",
+   "fieldtype": "Date",
+   "label": "Order Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "file_name",
+   "fieldtype": "Data",
+   "label": "FIle Name"
+  },
+  {
+   "fieldname": "files_section",
+   "fieldtype": "Section Break",
+   "label": "Files"
+  },
+  {
+   "fieldname": "file_name_2",
+   "fieldtype": "Data",
+   "label": "FIle Name 2"
+  },
+  {
+   "fieldname": "file_name_3",
+   "fieldtype": "Data",
+   "label": "FIle Name 3"
+  },
+  {
+   "fieldname": "file_name_4",
+   "fieldtype": "Data",
+   "label": "FIle Name 4"
+  },
+  {
+   "fieldname": "file_name_5",
+   "fieldtype": "Data",
+   "label": "FIle Name 5"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "total_qty_per_book",
+   "fieldtype": "Float",
+   "label": "Total Qty per Book",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2022-12-24 14:07:46.538446",
+ "modified_by": "Administrator",
+ "module": "Tech Ventures",
+ "name": "Print Order",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "book_name",
+ "track_changes": 1
+}

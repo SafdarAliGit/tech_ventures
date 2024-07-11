@@ -8,7 +8,7 @@ app_publisher = "Tech Ventures"
 app_description = "Tech Ventures"
 app_icon = "octicon octicon-file-directory"
 app_color = "grey"
-app_email = "safdar211@gmail.com"
+app_email = "erp@techventures.com.pk"
 app_license = "MIT"
 app_logo_url = "/assets/tech_ventures/images/Tech.png"
 
@@ -95,11 +95,32 @@ website_context = {
 # ---------------
 # Hook on document methods and events
 
-
+<<<<<<< HEAD
+doc_events = {
+#	"Sales Invoice": {
+#		"on_trash": "tech_ventures.utils.transactions.delete_ledger_entries"
+#	},
+#	"Purchase Invoice": {
+#		"on_trash": "tech_ventures.utils.transactions.delete_ledger_entries"
+#	},
+#	"Payment Entry": {
+#		"on_trash": "tech_ventures.utils.transactions.delete_ledger_entries"
+#	},
+#	"Stock Entry": {
+#		"on_trash": "tech_ventures.utils.transactions.delete_ledger_entries"
+#	},
+#	"Delivery Note": {
+#		"on_trash": "tech_ventures.utils.transactions.delete_ledger_entries"
+#	},
+#	"Purchase Receipt": {
+#		"on_trash": "tech_ventures.utils.transactions.delete_ledger_entries"
+#	}
+}
+=======
 #doc_events = {
 	
 #}
-
+>>>>>>> e04848433612f5a683985c1286d4e0ca712d9e99
 
 # Scheduled Tasks
 # ---------------
