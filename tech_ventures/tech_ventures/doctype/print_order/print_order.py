@@ -33,6 +33,8 @@ class PrintOrder(Document):
 		inv.posting_date = frappe.utils.today()
 		inv.customer = self.customer
 		inv.print_order = self.name
+		inv.agent = self.agent
+		inv.total_sales_commission = self.total_sales_commission
 		for row in self.items:
 			ini = inv.append("items")
 			ini.item_code = row.raw_material
@@ -47,6 +49,8 @@ class PrintOrder(Document):
 		inv.posting_date = frappe.utils.today()
 		inv.customer = self.customer
 		inv.print_order = self.name
+		inv.agent = self.agent
+		inv.total_sales_commission = self.total_sales_commission
 		for row in self.items:
 			ini = inv.append("items")
 			ini.item_code = row.raw_material

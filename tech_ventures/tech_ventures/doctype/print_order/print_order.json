@@ -8,6 +8,7 @@
  "field_order": [
   "customer",
   "book_name",
+  "sale_commission_per_piece",
   "column_break_2",
   "order_date",
   "qty",
@@ -19,10 +20,18 @@
   "status",
   "files_section",
   "file_name",
+  "column_break_3rwrv",
   "file_name_2",
+  "column_break_qp94c",
   "file_name_3",
+  "column_break_egjfs",
   "file_name_4",
-  "file_name_5"
+  "column_break_tscfs",
+  "file_name_5",
+  "total_sales_commission_section",
+  "agent",
+  "column_break_tuffw",
+  "total_sales_commission"
  ],
  "fields": [
   {
@@ -133,15 +142,62 @@
    "fieldtype": "Float",
    "label": "Total Qty per Book",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fetch_from": "book_name.sale_commission_per_piece_",
+   "fieldname": "sale_commission_per_piece",
+   "fieldtype": "Currency",
+   "label": "Sale Commission Per Piece ",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_3rwrv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_qp94c",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_egjfs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_tscfs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_sales_commission_section",
+   "fieldtype": "Section Break",
+   "label": "Total Sales Commission"
+  },
+  {
+   "default": "0",
+   "fieldname": "total_sales_commission",
+   "fieldtype": "Currency",
+   "label": "Total Sales Commission",
+   "read_only": 1
+  },
+  {
+   "fieldname": "agent",
+   "fieldtype": "Link",
+   "label": "Agent",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "column_break_tuffw",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2022-12-24 14:07:46.538446",
+ "modified": "2024-07-12 17:01:41.141856",
  "modified_by": "Administrator",
  "module": "Tech Ventures",
  "name": "Print Order",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -161,6 +217,7 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "book_name",
  "track_changes": 1
 }
