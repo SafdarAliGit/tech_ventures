@@ -121,7 +121,11 @@ website_context = {
 # 		"tech_ventures.tasks.monthly"
 # 	]
 # }
-
+doc_events = {
+	"Sales Invoice": {
+		"on_submit": "tech_ventures.overrides.sales_invoice.post_journal_entry"
+	}
+}
 # Testing
 # -------
 

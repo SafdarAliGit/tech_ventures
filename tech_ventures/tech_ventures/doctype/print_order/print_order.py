@@ -35,6 +35,7 @@ class PrintOrder(Document):
 		inv.print_order = self.name
 		inv.agent = self.agent
 		inv.total_sales_commission = self.total_sales_commission
+		inv.commission_account = self.commission_account
 		for row in self.items:
 			ini = inv.append("items")
 			ini.item_code = row.raw_material
@@ -51,6 +52,7 @@ class PrintOrder(Document):
 		inv.print_order = self.name
 		inv.agent = self.agent
 		inv.total_sales_commission = self.total_sales_commission
+		inv.commission_account = self.commission_account
 		for row in self.items:
 			ini = inv.append("items")
 			ini.item_code = row.raw_material
