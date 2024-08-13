@@ -1,4 +1,6 @@
 import frappe
+from frappe.model.naming import make_autoname
+from tech_ventures.utils.utils_functions import get_doctype_by_field
 
 
 def post_journal_entry(doc, method):
@@ -28,3 +30,14 @@ def post_journal_entry(doc, method):
             je.submit()
         except Exception as e:
             frappe.log_error(e, frappe.get_traceback())
+
+
+def on_cancel(doc, method):
+    je = get_doctype_by_field('Journal Entry', 'ref_no', doc.name)
+    je.cancel()
+    frappe.db.commit()
+    if je.amended_from:
+        new_name = int(je.name.split("-")[-1]) + 1
+    else:
+        new_name = f"{je.name}-{1}"
+    make_autoname(new_name, 'Journal Entry')

@@ -123,7 +123,8 @@ website_context = {
 # }
 doc_events = {
 	"Sales Invoice": {
-		"on_submit": "tech_ventures.overrides.sales_invoice.post_journal_entry"
+		"on_submit": "tech_ventures.overrides.sales_invoice.post_journal_entry",
+		"on_cancel": "tech_ventures.overrides.sales_invoice.on_cancel"
 	}
 }
 # Testing
