@@ -11,13 +11,13 @@ frappe.ui.form.on('Sheet Transfer', {
 
             };
         };
-        frm.set_query('item_code', 'sheet_transfer_item', function (doc, cdt, cdn) {
-            var d = locals[cdt][cdn];
-            return {
-                filters: [
-                    ["Item", "item_group", "=", 'Sheet']
-                ]
-            };
-        });
+        // frm.set_query('item_code', 'sheet_transfer_item', function (doc, cdt, cdn) {
+        //     var d = locals[cdt][cdn];
+        //     return {
+        //         filters: [
+        //             ["Item", "item_group", "=", 'Sheet']
+        //         ]
+        //     };
+        // });
     }
 });
