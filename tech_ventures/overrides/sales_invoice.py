@@ -6,6 +6,7 @@ from frappe.utils import nowdate
 def post_journal_entry(doc, method):
     # for with holding tax
     # Get the Sales Invoice
+   
     discount_amount = doc.withholding_tax_amount or 0
     
     # If discount amount is 0, do nothing
@@ -15,7 +16,7 @@ def post_journal_entry(doc, method):
         je.voucher_type = "Journal Entry"
         je.posting_date = doc.posting_date
         je.company = doc.company
-        je.remark = f"Withholding Tax for Sales Invoice {doc.name}"
+        je.remark = f"Withholding Tax for Sales Invoice {doc.name}, Print Order {doc.print_order}"
         je.user_remark = je.remark
         je.ref_no = doc.name
         je.ref_doctype = "Sales Invoice"
@@ -48,6 +49,8 @@ def post_journal_entry(doc, method):
         je.voucher_type = "Journal Entry"
         je.ref_no = doc.name
         je.ref_doctype = "Sales Invoice"
+        je.remark = f"Commission for Sales Invoice {doc.name}, Print Order {doc.print_order}"
+        
         je.append("accounts", {
             'account': "Debtors - EP",
             'party_type': "Customer",
