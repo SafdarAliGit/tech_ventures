@@ -6,45 +6,45 @@ from frappe.utils import nowdate
 def post_journal_entry(doc, method):
     # for with holding tax
     # Get the Sales Invoice
-    invoice = frappe.get_doc("Sales Invoice", doc.name)
     discount_amount = doc.withholding_tax_amount or 0
     
     # If discount amount is 0, do nothing
-    if discount_amount <= 0:
-        return
+    if discount_amount > 0:
+        # Create Journal Entry
+        je = frappe.new_doc("Journal Entry")
+        je.voucher_type = "Journal Entry"
+        je.posting_date = doc.posting_date
+        je.company = doc.company
+        je.remark = f"Withholding Tax for Sales Invoice {doc.name}"
+        je.user_remark = je.remark
+        je.ref_no = doc.name
+        je.ref_doctype = "Sales Invoice"
 
-    # Create Journal Entry
-    je = frappe.new_doc("Journal Entry")
-    je.voucher_type = "Journal Entry"
-    je.posting_date = doc.posting_date
-    je.company = doc.company
-    je.remark = f"Withholding Tax for Sales Invoice {doc.name}"
-    je.user_remark = je.remark
-    je.ref_no = doc.name
-    je.ref_doctype = "Sales Invoice"
+        # Debit Discount Allowed
+        je.append("accounts", {
+            "account": "Sales - EP",
+            "debit_in_account_currency": discount_amount,
+        })  
 
-    # Debit Discount Allowed
-    je.append("accounts", {
-        "account": "Sales - EP",
-        "debit_in_account_currency": discount_amount,
-    })  
+        # Credit Customer Receivable Account
+        je.append("accounts", {
+            "account": "Withholding Tax - EP",
+            "credit_in_account_currency": discount_amount,
+        })
 
-    # Credit Customer Receivable Account
-    je.append("accounts", {
-        "account": "Withholding Tax - EP",
-        "credit_in_account_currency": discount_amount,
-    })
+        # Save and submit
+        je.save()
+        je.submit()
+        frappe.msgprint(f"Journal Entry {je.name} created for Withholding Tax.")
+        
 
-    # Save and submit
-    je.save()
-    je.submit()
-    frappe.msgprint(f"Journal Entry {je.name} created for Withholding Tax.")
+    
     
     # for commission
     if doc.total_sales_commission > 0 and doc.agent and doc.commission_account:
         je = frappe.new_doc("Journal Entry")
         je.posting_date = doc.posting_date
-        je.company = doc.company,
+        je.company = doc.company
         je.voucher_type = "Journal Entry"
         je.ref_no = doc.name
         je.ref_doctype = "Sales Invoice"
