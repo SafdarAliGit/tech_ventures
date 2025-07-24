@@ -126,6 +126,9 @@ doc_events = {
 		"on_submit": "tech_ventures.overrides.sales_invoice.post_journal_entry",
 		"on_cancel": "tech_ventures.overrides.sales_invoice.on_cancel",
 		"on_update": "tech_ventures.overrides.sales_invoice.custom_on_update"
+	},
+	"Print Order": {
+		"on_update": "tech_ventures.tech_ventures.doctype.print_order.print_order.custom_on_update"
 	}
 }
 # Testing

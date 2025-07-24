@@ -83,3 +83,7 @@ class PrintOrder(Document):
 
 
 
+def custom_on_update(doc, method):
+	doc.total_sales_commission = (doc.sale_commission_per_piece or 0) * doc.qty
+	
+	
