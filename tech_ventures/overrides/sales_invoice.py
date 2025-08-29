@@ -83,6 +83,8 @@ def get_withholding_tax(**args):
     
     
 def custom_on_update(doc, method):
+    if doc.qty and doc.total:
+        doc.custom_rate_per_book = doc.total / doc.qty
     if doc.withholding_tax > 0:
         doc.withholding_tax_amount = float(doc.grand_total) * (float(doc.withholding_tax) / 100)    
 
