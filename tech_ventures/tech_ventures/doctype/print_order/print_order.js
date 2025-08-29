@@ -54,7 +54,7 @@ frappe.ui.form.on('Print Order Item', {
 
 function set_qty(frm, cdt, cdn) {
     var d = locals[cdt][cdn];
-    frappe.model.set_value(d.doctype, d.name, "qty", frm.doc.qty * (Math.ceil(d.qty_per_book * d.consumption_cf)));
+    frappe.model.set_value(d.doctype, d.name, "qty", frm.doc.qty * (Math.round(d.qty_per_book * d.consumption_cf, 0)));
     set_total_qty(frm);
 }
 
