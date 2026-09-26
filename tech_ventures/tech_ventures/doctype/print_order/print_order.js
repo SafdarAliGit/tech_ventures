@@ -22,6 +22,18 @@ frappe.ui.form.on('Print Order', {
                 }
             })
         })
+        if (frm.doc.docstatus === 1) {
+            frm.add_custom_button(__('Retry Postings'), function () {
+                frappe.call({
+                    method: "retry_postings",
+                    doc: frm.doc,
+                    freeze: true,
+                    callback: function () {
+                        frappe.show_alert({ message: __("Stock Entry and Sales Invoice queued for creation"), indicator: "blue" });
+                    }
+                })
+            })
+        }
     },
     book_name(frm) {
         frappe.call({

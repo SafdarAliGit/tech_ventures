@@ -2,7 +2,10 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
+from frappe.utils import flt
+from frappe.utils.background_jobs import is_job_enqueued
 
 class PrintOrder(Document):
 	@frappe.whitelist()
@@ -12,23 +15,68 @@ class PrintOrder(Document):
 			"price_list_rate") or 0
 
 	def before_submit(self):
+		# Cheap checks only; the heavy postings run in a background job after submit
+		if not any(row.item_code for row in self.items):
+			frappe.throw(_("At least one row must have an Item Code to create the Stock Entry"))
+
+	def on_submit(self):
+		self.enqueue_postings()
+		frappe.msgprint(_("Stock Entry and Sales Invoice are being created in the background. "
+			"You will be notified when done."), alert=True)
+
+	def enqueue_postings(self):
+		job_id = "print_order_postings::" + self.name
+		if is_job_enqueued(job_id):
+			frappe.msgprint(_("Postings for {0} are already in progress").format(self.name))
+			return
+		frappe.enqueue(
+			"tech_ventures.tech_ventures.doctype.print_order.print_order.process_postings",
+			queue="long",
+			timeout=3000,
+			enqueue_after_commit=True,
+			job_id=job_id,
+			print_order=self.name,
+		)
+
+	@frappe.whitelist()
+	def retry_postings(self):
+		if self.docstatus != 1:
+			frappe.throw(_("Print Order must be submitted"))
+		self.enqueue_postings()
+
+	def make_stock_entry(self):
+		# Skip if already posted (safe for retries)
+		if frappe.db.exists("Stock Entry", {"print_order": self.name, "docstatus": 1}):
+			return
 		ste = frappe.new_doc("Stock Entry")
 		ste.stock_entry_type = "Material Issue"
 		ste.posting_date = frappe.utils.today()
 		ste.from_warehouse = "Stores - EP"
 		ste.print_order = self.name
+		ste.expense_account = frappe.db.get_value("Company", frappe.db.get_single_value("Global Defaults", "default_company"), "default_expense_account")
 		for row in self.items:
 			if row.item_code:
 				sti = ste.append("items")
 				sti.item_code = row.item_code
 				sti.qty = row.qty
 				sti.uom = row.uom
-				ste.expense_account = frappe.db.get_value("Company", frappe.db.get_single_value("Global Defaults", "default_company"), "default_expense_account")
 		ste.save()
 		ste.submit()
-		self.post_invoice()
+
+	def get_customer_rates(self):
+		raw_materials = [row.raw_material for row in self.items if row.raw_material]
+		if not raw_materials:
+			return {}
+		rows = frappe.get_all("Customer Price List",
+			filters={"parent": self.customer, "item_code": ["in", raw_materials]},
+			fields=["item_code", "rate"])
+		return {r.item_code: r.rate for r in rows}
 
 	def post_invoice(self):
+		# Skip if already posted (safe for retries)
+		if frappe.db.exists("Sales Invoice", {"print_order": self.name, "docstatus": 1}):
+			return
+		rates = self.get_customer_rates()
 		inv = frappe.new_doc("Sales Invoice")
 		inv.posting_date = frappe.utils.today()
 		inv.customer = self.customer
@@ -39,8 +87,8 @@ class PrintOrder(Document):
 		for row in self.items:
 			ini = inv.append("items")
 			ini.item_code = row.raw_material
-			ini.qty = row.qty_per_book * self.qty
-			ini.rate = frappe.db.get_value("Customer Price List", {"parent":self.customer, "item_code":row.raw_material}, "rate")
+			ini.qty = flt(row.qty_per_book) * flt(self.qty)
+			ini.rate = rates.get(row.raw_material)
 		inv.save()
 		inv.submit()
 
@@ -53,11 +101,12 @@ class PrintOrder(Document):
 		inv.agent = self.agent
 		inv.total_sales_commission = self.total_sales_commission
 		inv.commission_account = self.commission_account
+		rates = self.get_customer_rates()
 		for row in self.items:
 			ini = inv.append("items")
 			ini.item_code = row.raw_material
-			ini.qty = row.qty_per_book * self.qty
-			ini.rate = frappe.db.get_value("Customer Price List", {"parent":self.customer, "item_code":row.raw_material}, "rate")
+			ini.qty = flt(row.qty_per_book) * flt(self.qty)
+			ini.rate = rates.get(row.raw_material)
 		inv.save()
 		return inv.name
 
@@ -81,6 +130,32 @@ class PrintOrder(Document):
 			self.file_name_4 = order.file_name_4
 			self.file_name_5 = order.file_name_5
 
+
+
+def process_postings(print_order):
+	"""Background job: create and submit Stock Entry and Sales Invoice for a submitted Print Order."""
+	doc = frappe.get_doc("Print Order", print_order)
+	if doc.docstatus != 1:
+		return
+	try:
+		doc.make_stock_entry()
+		doc.post_invoice()
+		frappe.db.commit()
+	except Exception as e:
+		# Undo partial postings so a retry starts clean
+		frappe.db.rollback()
+		error = frappe.log_error(title=_("Print Order {0}: postings failed").format(print_order),
+			reference_doctype="Print Order", reference_name=print_order)
+		reason = frappe.utils.strip_html_tags(str(e))
+		doc.add_comment("Comment", _("Stock Entry / Sales Invoice creation failed: {0} (Error Log {1}). "
+			"Fix the issue and click Retry Postings.").format(reason, error.name if error else ""))
+		frappe.db.commit()
+		frappe.publish_realtime("msgprint", _("Print Order {0}: Stock Entry / Sales Invoice creation failed: {1}<br>"
+			"Fix the issue and use Retry Postings on the Print Order.").format(print_order, reason),
+			user=frappe.session.user)
+		return
+	frappe.publish_realtime("msgprint", _("Print Order {0}: Stock Entry and Sales Invoice created.").format(print_order),
+		user=frappe.session.user)
 
 
 def custom_on_update(doc, method):
