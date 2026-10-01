@@ -25,17 +25,37 @@ class PrintOrder(Document):
 			frappe.throw(_("At least one row must have an Item Code to create the Stock Entry"))
 
 	@frappe.whitelist()
-	def submit_with_postings(self):
+	def submit_with_postings(self, workflow_action=None):
 		"""Queue Stock Entry and Sales Invoice creation; the Print Order is submitted only if both succeed."""
 		if self.docstatus != 0:
 			frappe.throw(_("Print Order is already submitted"))
 		self.check_permission("submit")
 		self.validate_postings()
-		self.enqueue_postings()
+		self.get_submit_workflow_state(workflow_action)
+		self.enqueue_postings(workflow_action=workflow_action)
 		frappe.msgprint(_("Stock Entry and Sales Invoice are being created in the background. "
 			"The Print Order will be submitted once they succeed."), alert=True)
 
-	def enqueue_postings(self):
+	def get_submit_workflow_state(self, workflow_action):
+		"""Return (state field, next state) for a workflow action that submits, or None without a workflow."""
+		from frappe.model.workflow import get_transitions, get_workflow_name, get_workflow
+
+		if not get_workflow_name(self.doctype):
+			return None
+		if not workflow_action:
+			frappe.throw(_("Use the workflow action to submit this Print Order"))
+		workflow = get_workflow(self.doctype)
+		# get_transitions only returns transitions the current user's roles allow
+		transition = [t for t in get_transitions(self, workflow) if t.action == workflow_action]
+		if not transition:
+			frappe.throw(_("Workflow action {0} is not allowed").format(frappe.bold(workflow_action)))
+		next_state = transition[0].next_state
+		state_row = [s for s in workflow.states if s.state == next_state]
+		if not state_row or frappe.utils.cint(state_row[0].doc_status) != 1:
+			frappe.throw(_("Workflow action {0} does not submit the Print Order").format(frappe.bold(workflow_action)))
+		return workflow.workflow_state_field, next_state
+
+	def enqueue_postings(self, workflow_action=None):
 		job_id = "print_order_postings::" + self.name
 		if is_job_enqueued(job_id):
 			frappe.throw(_("Postings for {0} are already in progress").format(self.name))
@@ -46,6 +66,7 @@ class PrintOrder(Document):
 			enqueue_after_commit=True,
 			job_id=job_id,
 			print_order=self.name,
+			workflow_action=workflow_action,
 		)
 
 	@frappe.whitelist()
@@ -143,7 +164,7 @@ class PrintOrder(Document):
 
 
 
-def process_postings(print_order):
+def process_postings(print_order, workflow_action=None):
 	"""Background job: create and submit Stock Entry and Sales Invoice, then submit the Print Order.
 	All three happen in one transaction, so a failure leaves the Print Order in draft with nothing posted."""
 	doc = frappe.get_doc("Print Order", print_order)
@@ -154,6 +175,10 @@ def process_postings(print_order):
 		doc.make_stock_entry()
 		doc.post_invoice()
 		if doc.docstatus == 0:
+			# Move to the workflow's submitted state (e.g. Posted), as apply_workflow would
+			workflow_state = doc.get_submit_workflow_state(workflow_action)
+			if workflow_state:
+				doc.set(*workflow_state)
 			doc.flags.postings_done = True
 			doc.submit()
 		frappe.db.commit()

@@ -19,6 +19,28 @@ frappe.ui.form.on('Print Order', {
             });
         };
     },
+    before_workflow_action(frm) {
+        // A workflow action that submits (e.g. Post) must go through the background postings too
+        const wf = frappe.workflow.workflows[frm.doctype];
+        const state_field = frappe.workflow.get_state_fieldname(frm.doctype);
+        const transition = (wf.transitions || []).find(t =>
+            t.state === frm.doc[state_field] && t.action === frm.selected_workflow_action);
+        const next_state = transition && (wf.states || []).find(s => s.state === transition.next_state);
+        if (frm.doc.docstatus !== 0 || !next_state || cint(next_state.doc_status) !== 1) return;
+
+        frappe.dom.unfreeze();
+        frm.selected_workflow_action = null;
+        frappe.confirm(__('Create Stock Entry and Sales Invoice, then submit this Print Order?'), function () {
+            frappe.call({
+                method: "submit_with_postings",
+                doc: frm.doc,
+                args: { workflow_action: transition.action },
+                freeze: true
+            });
+        });
+        // Stop the standard apply_workflow call; the background job applies the state on success
+        return Promise.reject();
+    },
     qty(frm) {
         var items = frm.doc.items
         for (var i in items) {
