@@ -22,6 +22,18 @@ frappe.ui.form.on('Print Order', {
                 }
             })
         })
+        if (frm.doc.docstatus === 0 && !frm.is_new() && !frm.is_dirty()) {
+            // Replace the standard Submit: the server submits only after Stock Entry and Sales Invoice succeed
+            frm.page.set_primary_action(__('Submit'), function () {
+                frappe.confirm(__('Create Stock Entry and Sales Invoice, then submit this Print Order?'), function () {
+                    frappe.call({
+                        method: "submit_with_postings",
+                        doc: frm.doc,
+                        freeze: true
+                    })
+                })
+            })
+        }
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__('Retry Postings'), function () {
                 frappe.call({

@@ -15,20 +15,30 @@ class PrintOrder(Document):
 			"price_list_rate") or 0
 
 	def before_submit(self):
-		# Cheap checks only; the heavy postings run in a background job after submit
+		# Submission only happens from the background job, after the postings succeed
+		if not self.flags.postings_done:
+			frappe.throw(_("Use the Submit button on the form. The Print Order is submitted "
+				"automatically once the Stock Entry and Sales Invoice are created."))
+
+	def validate_postings(self):
 		if not any(row.item_code for row in self.items):
 			frappe.throw(_("At least one row must have an Item Code to create the Stock Entry"))
 
-	def on_submit(self):
+	@frappe.whitelist()
+	def submit_with_postings(self):
+		"""Queue Stock Entry and Sales Invoice creation; the Print Order is submitted only if both succeed."""
+		if self.docstatus != 0:
+			frappe.throw(_("Print Order is already submitted"))
+		self.check_permission("submit")
+		self.validate_postings()
 		self.enqueue_postings()
 		frappe.msgprint(_("Stock Entry and Sales Invoice are being created in the background. "
-			"You will be notified when done."), alert=True)
+			"The Print Order will be submitted once they succeed."), alert=True)
 
 	def enqueue_postings(self):
 		job_id = "print_order_postings::" + self.name
 		if is_job_enqueued(job_id):
-			frappe.msgprint(_("Postings for {0} are already in progress").format(self.name))
-			return
+			frappe.throw(_("Postings for {0} are already in progress").format(self.name))
 		frappe.enqueue(
 			"tech_ventures.tech_ventures.doctype.print_order.print_order.process_postings",
 			queue="long",
@@ -40,6 +50,7 @@ class PrintOrder(Document):
 
 	@frappe.whitelist()
 	def retry_postings(self):
+		# For Print Orders submitted before postings were tied to submission
 		if self.docstatus != 1:
 			frappe.throw(_("Print Order must be submitted"))
 		self.enqueue_postings()
@@ -133,13 +144,18 @@ class PrintOrder(Document):
 
 
 def process_postings(print_order):
-	"""Background job: create and submit Stock Entry and Sales Invoice for a submitted Print Order."""
+	"""Background job: create and submit Stock Entry and Sales Invoice, then submit the Print Order.
+	All three happen in one transaction, so a failure leaves the Print Order in draft with nothing posted."""
 	doc = frappe.get_doc("Print Order", print_order)
-	if doc.docstatus != 1:
+	if doc.docstatus == 2:
 		return
 	try:
+		doc.validate_postings()
 		doc.make_stock_entry()
 		doc.post_invoice()
+		if doc.docstatus == 0:
+			doc.flags.postings_done = True
+			doc.submit()
 		frappe.db.commit()
 	except Exception as e:
 		# Undo partial postings so a retry starts clean
@@ -148,13 +164,13 @@ def process_postings(print_order):
 			reference_doctype="Print Order", reference_name=print_order)
 		reason = frappe.utils.strip_html_tags(str(e))
 		doc.add_comment("Comment", _("Stock Entry / Sales Invoice creation failed: {0} (Error Log {1}). "
-			"Fix the issue and click Retry Postings.").format(reason, error.name if error else ""))
+			"Fix the issue and submit again.").format(reason, error.name if error else ""))
 		frappe.db.commit()
 		frappe.publish_realtime("msgprint", _("Print Order {0}: Stock Entry / Sales Invoice creation failed: {1}<br>"
-			"Fix the issue and use Retry Postings on the Print Order.").format(print_order, reason),
+			"The Print Order was not submitted. Fix the issue and submit again.").format(print_order, reason),
 			user=frappe.session.user)
 		return
-	frappe.publish_realtime("msgprint", _("Print Order {0}: Stock Entry and Sales Invoice created.").format(print_order),
+	frappe.publish_realtime("msgprint", _("Print Order {0}: Stock Entry and Sales Invoice created and Print Order submitted.").format(print_order),
 		user=frappe.session.user)
 
 
