@@ -27,14 +27,17 @@ class PrintOrder(Document):
 	@frappe.whitelist()
 	def submit_with_postings(self, workflow_action=None):
 		"""Queue Stock Entry and Sales Invoice creation; the Print Order is submitted only if both succeed."""
+		self.queue_submit(workflow_action)
+		frappe.msgprint(_("Stock Entry and Sales Invoice are being created in the background. "
+			"The Print Order will be submitted once they succeed."), alert=True)
+
+	def queue_submit(self, workflow_action=None):
 		if self.docstatus != 0:
 			frappe.throw(_("Print Order is already submitted"))
 		self.check_permission("submit")
 		self.validate_postings()
 		self.get_submit_workflow_state(workflow_action)
 		self.enqueue_postings(workflow_action=workflow_action)
-		frappe.msgprint(_("Stock Entry and Sales Invoice are being created in the background. "
-			"The Print Order will be submitted once they succeed."), alert=True)
 
 	def get_submit_workflow_state(self, workflow_action):
 		"""Return (state field, next state) for a workflow action that submits, or None without a workflow."""
@@ -197,6 +200,93 @@ def process_postings(print_order, workflow_action=None):
 		return
 	# frappe.publish_realtime("msgprint", _("Print Order {0}: Stock Entry and Sales Invoice created and Print Order submitted.").format(print_order),
 	# 	user=frappe.session.user)
+
+
+def is_workflow_submit_action(doc, action):
+	"""True if the workflow action takes this draft Print Order to a submitted state."""
+	from frappe.model.workflow import get_transitions, get_workflow
+
+	if doc.docstatus != 0:
+		return False
+	workflow = get_workflow(doc.doctype)
+	for t in get_transitions(doc, workflow):
+		if t.action == action:
+			state_row = [s for s in workflow.states if s.state == t.next_state]
+			return bool(state_row) and frappe.utils.cint(state_row[0].doc_status) == 1
+	return False
+
+
+@frappe.whitelist()
+def bulk_submit_cancel_or_update_docs(doctype, docnames, action="submit", data=None):
+	"""Override of list view bulk Submit: Print Orders are queued through the postings job
+	instead of being submitted directly. Everything else goes to the standard method."""
+	from frappe.desk.doctype.bulk_update.bulk_update import show_progress, submit_cancel_or_update_docs
+
+	if doctype != "Print Order" or action != "submit":
+		return submit_cancel_or_update_docs(doctype, docnames, action, data)
+
+	docnames = frappe.parse_json(docnames)
+	failed = []
+	for i, name in enumerate(docnames, 1):
+		try:
+			frappe.get_doc(doctype, name).queue_submit()
+			frappe.db.commit()
+			show_progress(docnames, _("Queueing {0}").format(doctype), i, name)
+		except Exception:
+			failed.append(name)
+			frappe.db.rollback()
+
+	if len(failed) < len(docnames):
+		frappe.msgprint(_("Stock Entry and Sales Invoice are being created in the background. "
+			"Print Orders will be submitted once they succeed."), alert=True)
+	return failed
+
+
+@frappe.whitelist()
+def bulk_workflow_approval(docnames, doctype, action):
+	"""Override of list view bulk workflow actions: for Print Order, actions that submit (e.g. Post)
+	are queued through the postings job. Everything else goes to the standard method."""
+	from collections import defaultdict
+	from frappe.model.workflow import bulk_workflow_approval as standard_bulk_workflow_approval
+	from frappe.model.workflow import print_workflow_log, show_progress
+
+	if doctype != "Print Order":
+		return standard_bulk_workflow_approval(docnames, doctype, action)
+
+	docnames = frappe.parse_json(docnames)
+	to_queue, others = [], []
+	for name in docnames:
+		try:
+			submits = is_workflow_submit_action(frappe.get_doc(doctype, name), action)
+		except Exception:
+			submits = False
+		(to_queue if submits else others).append(name)
+
+	# Standard method clears the message log, so run it before collecting our own messages
+	if others:
+		standard_bulk_workflow_approval(frappe.as_json(others), doctype, action)
+	if not to_queue:
+		return
+
+	failed, successful = defaultdict(list), defaultdict(list)
+	for i, name in enumerate(to_queue, 1):
+		show_progress(to_queue, _("Applying: {0}").format(action), i, name)
+		message_count = len(frappe.message_log)
+		try:
+			frappe.get_doc(doctype, name).queue_submit(action)
+			frappe.db.commit()
+			successful[name].append({"message": _("Stock Entry and Sales Invoice are being created in the background. "
+				"The Print Order will be submitted once they succeed.")})
+		except Exception as e:
+			frappe.db.rollback()
+			messages = frappe.message_log[message_count:]
+			del frappe.message_log[message_count:]
+			reason = ", ".join(frappe.parse_json(m).get("message", "") for m in messages) or str(e)
+			failed[name].append({"message": reason})
+
+	indicator = "orange" if failed and successful else ("red" if failed else "green")
+	print_workflow_log(failed, _("Failed Transactions"), doctype, indicator)
+	print_workflow_log(successful, _("Queued Transactions"), doctype, indicator)
 
 
 def custom_on_update(doc, method):

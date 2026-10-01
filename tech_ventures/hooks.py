@@ -139,9 +139,11 @@ doc_events = {
 # Overriding Methods
 # ------------------------------
 #
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "tech_ventures.event.get_events"
-# }
+override_whitelisted_methods = {
+	# Print Order bulk Submit / Post must go through the background postings job
+	"frappe.desk.doctype.bulk_update.bulk_update.submit_cancel_or_update_docs": "tech_ventures.tech_ventures.doctype.print_order.print_order.bulk_submit_cancel_or_update_docs",
+	"frappe.model.workflow.bulk_workflow_approval": "tech_ventures.tech_ventures.doctype.print_order.print_order.bulk_workflow_approval"
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
