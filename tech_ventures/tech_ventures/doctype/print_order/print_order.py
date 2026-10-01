@@ -195,8 +195,8 @@ def process_postings(print_order, workflow_action=None):
 			"The Print Order was not submitted. Fix the issue and submit again.").format(print_order, reason),
 			user=frappe.session.user)
 		return
-	frappe.publish_realtime("msgprint", _("Print Order {0}: Stock Entry and Sales Invoice created and Print Order submitted.").format(print_order),
-		user=frappe.session.user)
+	# frappe.publish_realtime("msgprint", _("Print Order {0}: Stock Entry and Sales Invoice created and Print Order submitted.").format(print_order),
+	# 	user=frappe.session.user)
 
 
 def custom_on_update(doc, method):
