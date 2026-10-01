@@ -2,6 +2,23 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Print Order', {
+    setup(frm) {
+        // Replace the standard Submit: the server submits only after Stock Entry and Sales Invoice succeed.
+        // Overriding savesubmit covers every Submit path (toolbar re-renders, dirty/clean toggles, shortcuts).
+        frm.savesubmit = function () {
+            return new Promise((resolve) => {
+                frappe.confirm(__('Create Stock Entry and Sales Invoice, then submit this Print Order?'), function () {
+                    (frm.is_dirty() ? frm.save() : Promise.resolve()).then(() => {
+                        frappe.call({
+                            method: "submit_with_postings",
+                            doc: frm.doc,
+                            freeze: true
+                        }).then(resolve);
+                    });
+                });
+            });
+        };
+    },
     qty(frm) {
         var items = frm.doc.items
         for (var i in items) {
@@ -22,18 +39,6 @@ frappe.ui.form.on('Print Order', {
                 }
             })
         })
-        if (frm.doc.docstatus === 0 && !frm.is_new() && !frm.is_dirty()) {
-            // Replace the standard Submit: the server submits only after Stock Entry and Sales Invoice succeed
-            frm.page.set_primary_action(__('Submit'), function () {
-                frappe.confirm(__('Create Stock Entry and Sales Invoice, then submit this Print Order?'), function () {
-                    frappe.call({
-                        method: "submit_with_postings",
-                        doc: frm.doc,
-                        freeze: true
-                    })
-                })
-            })
-        }
         if (frm.doc.docstatus === 1) {
             frm.add_custom_button(__('Retry Postings'), function () {
                 frappe.call({
