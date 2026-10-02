@@ -64,7 +64,7 @@ class PrintOrder(Document):
 			frappe.throw(_("Postings for {0} are already in progress").format(self.name))
 		frappe.enqueue(
 			"tech_ventures.tech_ventures.doctype.print_order.print_order.process_postings",
-			queue="long",
+			queue="default",
 			timeout=3000,
 			enqueue_after_commit=True,
 			job_id=job_id,
